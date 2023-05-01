@@ -1,12 +1,8 @@
 ## **Projeto 1 - Projeto de Sistema Bancário** 🏦
 
-------
-
 Criar um sistema bancário com as operações: sacar, depositar e visualizar extrato utilizando a linguagem Python.
 
 ## **Instruções de Entrega do Desafio:**
-
-------
 
 - Não precisa identificar qual é o número da agência e conta bancária;
 - Todos os depósitos devem ser armazenados em uma variável e exibidos na operação de extrato;
