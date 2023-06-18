@@ -176,7 +176,7 @@ def menu_conta(numero_conta, contas, usuario):
 
                 if(contador < 1):
                     print("@@@ Titular não possui mais contas abertas! @@@")
-                    break         
+                    continue         
 
                 opcao_conta_transferencia = int(input("\nDigite o número da conta que receberá a transferência: "))
                 numero_conta_transferencia = verifica_conta(opcao_conta_transferencia, contas, usuario)
