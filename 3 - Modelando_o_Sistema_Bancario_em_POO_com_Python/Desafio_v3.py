@@ -1,5 +1,5 @@
 import textwrap
-from abc import ABC, abstractclassmethod, abstractproperty
+from abc import ABC, abstractproperty
 from datetime import datetime
 
 class Cliente:
@@ -167,10 +167,8 @@ class Historico:
                 "tipo": transacao.__class__.__name__,
                 "operacao": transacao.operacao,
                 "valor": transacao.valor,
-                "agencia": conta.agencia,
                 "conta": conta.numero,
                 "titular": conta.cliente.nome,
-                "agencia_destino": conta_transferencia.agencia,
                 "conta_destino": conta_transferencia.numero,
                 "titular_conta_destino": conta_transferencia.cliente.nome,
                 "data": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -312,9 +310,9 @@ def exibir_extrato(numero_conta):
     else:
         for transacao in transacoes:
             if 'Transferencia' in {transacao['tipo']} and '+' in {transacao['operacao']}:
-                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} de Agência: {transacao['agencia']}, C/C: {transacao['conta']}, Titular: {transacao['titular'].title()}"
+                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} de {transacao['titular']} C/C: {transacao['conta']} "
             elif 'Transferencia' in {transacao['tipo']} and '-' in {transacao['operacao']}:
-                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} para Agência: {transacao['agencia_destino']}, C/C: {transacao['conta_destino']}, Titular: {transacao['titular_conta_destino'].title()}"
+                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} para {transacao['titular_conta_destino']} C/C: {transacao['conta_destino']} "
             else:
                 extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f}"
 
@@ -499,7 +497,7 @@ def menu_conta(numero_conta, contas, cliente):
 
                 if(contador < 1):
                     print("@@@ Titular não possui mais contas abertas! @@@")
-                    continue
+                    break
 
                 opcao_conta_transferencia = int(input("\nDigite o número da conta que receberá a transferência: "))
                 numero_conta_transferencia = verifica_conta(opcao_conta_transferencia, contas, cliente)
