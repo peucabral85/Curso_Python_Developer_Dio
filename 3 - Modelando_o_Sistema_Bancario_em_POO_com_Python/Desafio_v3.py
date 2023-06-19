@@ -1,5 +1,5 @@
 import textwrap
-from abc import ABC, abstractproperty
+from abc import ABC, abstractclassmethod, abstractproperty
 from datetime import datetime
 
 class Cliente:
@@ -7,11 +7,8 @@ class Cliente:
         self.endereco = endereco
         self.contas = []
 
-    def realizar_transacao(self, conta, transacao):
-        transacao.registrar(conta)
-
-    def realizar_transacao_transf(self, conta, conta_destino, transacao):
-        transacao.registrar_transf(conta, conta_destino)
+    def realizar_transacao(self, conta, conta_destino, transacao):
+        transacao.registrar(conta, conta_destino)
 
     def adicionar_conta(self, conta):
         self.contas.append(conta)
@@ -157,7 +154,7 @@ class Historico:
                 "tipo": transacao.__class__.__name__,
                 "operacao": transacao.operacao,
                 "valor": transacao.valor,
-                "data": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                "data": datetime.now().strftime("%d-%m-%Y")
             }
         )
 
@@ -167,11 +164,13 @@ class Historico:
                 "tipo": transacao.__class__.__name__,
                 "operacao": transacao.operacao,
                 "valor": transacao.valor,
+                "agencia": conta.agencia,
                 "conta": conta.numero,
                 "titular": conta.cliente.nome,
+                "agencia_destino": conta_transferencia.agencia,
                 "conta_destino": conta_transferencia.numero,
                 "titular_conta_destino": conta_transferencia.cliente.nome,
-                "data": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                "data": datetime.now().strftime("%d-%m-%Y")
             }
         )
 
@@ -180,6 +179,9 @@ class Transacao(ABC):
     @abstractproperty
     def valor(self):
         pass
+
+    @abstractclassmethod
+    def registrar(self, conta, conta_destino):
         pass
 
 class Saque(Transacao):
@@ -195,7 +197,7 @@ class Saque(Transacao):
     def operacao(self):
         return self._operacao
 
-    def registrar(self, conta):
+    def registrar(self, conta, conta_destino):
         sucesso_transacao = conta.sacar(self.valor)
 
         if sucesso_transacao:
@@ -214,7 +216,7 @@ class Deposito(Transacao):
     def operacao(self):
         return self._operacao
 
-    def registrar(self, conta):
+    def registrar(self, conta, conta_destino):
         sucesso_transacao = conta.depositar(self.valor)
 
         if sucesso_transacao:
@@ -233,17 +235,17 @@ class Transferencia(Transacao):
     def operacao(self):
         return self._operacao
 
-    def registrar_transf(self, conta, conta_transferencia):
+    def registrar(self, conta, conta_destino):
         sucesso_transacao = conta.transferir(self.valor)
-        sucesso_transacao_transf = conta_transferencia.transferir_conta_destino(self.valor)
+        sucesso_transacao_transf = conta_destino.transferir_conta_destino(self.valor)
 
         if sucesso_transacao:
             self._operacao = "-"
-            conta.historico.adicionar_transacao_transf(self, conta, conta_transferencia)
+            conta.historico.adicionar_transacao_transf(self, conta, conta_destino)
 
         if sucesso_transacao_transf:
             self._operacao = "+"
-            conta_transferencia.historico.adicionar_transacao_transf(self, conta, conta_transferencia)
+            conta_destino.historico.adicionar_transacao_transf(self, conta, conta_destino)
 
 def verifica_cliente(cpf_cliente, clientes):
     clientes_verificados = [cliente for cliente in clientes if cliente.cpf == cpf_cliente]
@@ -301,7 +303,7 @@ def cancelar_conta(numero_conta, cliente, contas):
     print("\n*** Conta cancelada com sucesso! ***")
 
 def exibir_extrato(numero_conta):
-    print("\n*********************** EXTRATO ************************")
+    print("\n****************************** EXTRATO *******************************")
     transacoes = numero_conta.historico.transacoes
 
     extrato = ""
@@ -310,16 +312,16 @@ def exibir_extrato(numero_conta):
     else:
         for transacao in transacoes:
             if 'Transferencia' in {transacao['tipo']} and '+' in {transacao['operacao']}:
-                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} de {transacao['titular']} C/C: {transacao['conta']} "
+                extrato += f"\n{transacao['tipo']}:\n\tValor: {transacao['operacao']} R$ {transacao['valor']:.2f} de {transacao['titular'].title()}, Agência: {transacao['agencia']} C/C: {transacao['conta']}\n\tData:  {transacao['data']}"
             elif 'Transferencia' in {transacao['tipo']} and '-' in {transacao['operacao']}:
-                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f} para {transacao['titular_conta_destino']} C/C: {transacao['conta_destino']} "
+                extrato += f"\n{transacao['tipo']}:\n\tValor: {transacao['operacao']} R$ {transacao['valor']:.2f} para {transacao['titular_conta_destino'].title()}, Agência: {transacao['agencia_destino']} C/C: {transacao['conta_destino']}\n\tData:  {transacao['data']}"
             else:
-                extrato += f"\n{transacao['tipo']}:\n\t{transacao['operacao']} R$ {transacao['valor']:.2f}"
+                extrato += f"\n{transacao['tipo']}:\n\tValor: {transacao['operacao']} R$ {transacao['valor']:.2f}\n\tData:  {transacao['data']}"
 
 
     print(extrato)
     print(f"\nSaldo:\n\tR$ {numero_conta.saldo:.2f}")
-    print("********************************************************")
+    print("**********************************************************************")
 
 def listar_contas(contas, cliente):
     if not contas:
@@ -327,7 +329,7 @@ def listar_contas(contas, cliente):
     else:
         print("\n")
         print(f"O Sr.(a) {cliente.nome.title()} possui as seguintes contas:\n")
-        print("*" * 56)
+        print("*" * 70)
         for conta in contas:
             if conta.cliente.cpf == cliente.cpf:
                 linha = f"""\
@@ -335,17 +337,17 @@ def listar_contas(contas, cliente):
                 C/C:\t\t{conta.numero}
                 """
                 print(textwrap.dedent(linha))
-        print("*" * 56)
+        print("*" * 70)
 
 def menu_principal(clientes,contas):
     menu = '''
-********************************************************
-               BANCO DIO - MENU PRINCIPAL
-********************************************************
+**********************************************************************
+                      BANCO DIO - MENU PRINCIPAL
+**********************************************************************
     [L] LOGAR
     [C] CADASTRAR USUÁRIO
     [Q] SAIR
-********************************************************
+**********************************************************************
 '''
     while True:
         print(menu)
@@ -385,15 +387,15 @@ def menu_principal(clientes,contas):
 def menu_usuario(cliente,contas):
     menu_cliente = '''
 
-********************************************************
-               BANCO DIO - MENU CLIENTE
-********************************************************
+**********************************************************************
+                     BANCO DIO - MENU CLIENTE
+**********************************************************************
     [C] CADASTRAR CONTA
     [A] ACESSAR CONTA
     [E] CANCELAR CONTA
     [L] LISTAR CONTAS
     [Q] SAIR DO MENU
-********************************************************
+**********************************************************************
 '''
 
     while True:
@@ -461,15 +463,15 @@ def menu_usuario(cliente,contas):
 
 def menu_conta(numero_conta, contas, cliente):
     menu_conta = f'''
-********************************************************
-               BANCO DIO - MENU CONTA {numero_conta.numero}
-********************************************************
+**********************************************************************
+                     BANCO DIO - MENU CONTA {numero_conta.numero}
+**********************************************************************
     [D] DEPOSITAR
     [S] SACAR
     [T] TRANSFERÊNCIA
     [E] EXTRATO
     [Q] SAIR DO MENU
-********************************************************
+**********************************************************************
 '''
     while True:
         print(menu_conta)
@@ -478,12 +480,12 @@ def menu_conta(numero_conta, contas, cliente):
         if(opcao.upper() == "D"):
             valor_deposito = float(input("\nPor favor, informe o valor do depósito: "))
             transacao = Deposito(valor_deposito)
-            cliente.realizar_transacao(numero_conta, transacao)
+            cliente.realizar_transacao(numero_conta, numero_conta, transacao)
 
         elif(opcao.upper() == "S"):
             valor_saque = float(input("\nPor favor, informe o valor do saque: "))
             transacao = Saque(valor_saque)
-            cliente.realizar_transacao(numero_conta, transacao)
+            cliente.realizar_transacao(numero_conta, numero_conta, transacao)
 
         elif(opcao.upper() == "T"):
             opcao_titularidade = str(input("\nDeseja transferir para conta de mesma titularidade? S ou N: "))
@@ -509,7 +511,7 @@ def menu_conta(numero_conta, contas, cliente):
                     else:
                         valor_transferencia = float(input("\nPor favor, informe o valor da transferência: "))
                         transacao = Transferencia(valor_transferencia)
-                        cliente.realizar_transacao_transf(numero_conta, numero_conta_transferencia, transacao)
+                        cliente.realizar_transacao(numero_conta, numero_conta_transferencia, transacao)
 
             else:
                 opcao_conta_transferencia = int(input("\nDigite o número da conta que receberá a transferência: "))
@@ -524,7 +526,7 @@ def menu_conta(numero_conta, contas, cliente):
                             opcao_transferencia = input(f"\nSerá transferido o valor de R$ {valor_transferencia:.2f} para a conta nº {numero_conta_transferencia.numero} em nome do(a) Sr.(a) {numero_conta_transferencia.cliente.nome.title()}. Confirma S ou N? ")
                             if(opcao_transferencia.upper() == "S"):
                                 transacao = Transferencia(valor_transferencia)
-                                cliente.realizar_transacao_transf(numero_conta, numero_conta_transferencia, transacao)
+                                cliente.realizar_transacao(numero_conta, numero_conta_transferencia, transacao)
                                 break
                             elif(opcao_transferencia.upper() == "N"):
                                 print("\n*** Operação de transferência cancelada! ****")
